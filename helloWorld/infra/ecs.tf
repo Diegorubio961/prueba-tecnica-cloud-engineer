@@ -4,7 +4,7 @@ resource "aws_ecs_cluster" "main" {
 
   setting {
     name  = "containerInsights"
-    value = "enabled"   # Provides CPU, memory, network, and disk metrics per container
+    value = var.enable_container_insights ? "enabled" : "disabled" # Off by default (Free Tier)
   }
 
   tags = {
@@ -16,8 +16,8 @@ resource "aws_ecs_cluster" "main" {
 
 # ── EC2 Container Instance (ECS host) ────────────────────────────────────────
 # Uses the ECS-optimized AMI which ships with the ECS agent and Docker pre-installed.
-# t3.medium (2 vCPU / 4 GB RAM) comfortably hosts the frontend and backend containers
-# while leaving enough headroom for the ECS agent, OS overhead, and traffic spikes.
+# t2.micro (Free Tier) hosts the frontend and backend containers for this demo;
+# the database runs separately in RDS, so the host only carries the app containers.
 
 resource "aws_instance" "ecs_host" {
   ami                    = data.aws_ssm_parameter.ecs_ami.value
@@ -36,8 +36,8 @@ resource "aws_instance" "ecs_host" {
   )
 
   root_block_device {
-    volume_size = 30
-    volume_type = "gp3"
+    volume_size = var.ec2_volume_size # Free Tier: up to 30 GB
+    volume_type = "gp2"               # gp2 is Free Tier eligible
     encrypted   = true
   }
 
@@ -54,7 +54,7 @@ resource "aws_instance" "ecs_host" {
 # ── CloudWatch Log Group ──────────────────────────────────────────────────────
 resource "aws_cloudwatch_log_group" "app" {
   name              = "/ecs/${var.project_name}"
-  retention_in_days = 30   # 30-day retention aligns with typical operational incident response windows
+  retention_in_days = var.log_retention_days # 7 days by default (Free Tier ingest allowance)
   tags              = { ManagedBy = "terraform" }
 }
 
@@ -80,18 +80,18 @@ resource "aws_ecs_task_definition" "app" {
         { containerPort = 3000, hostPort = 3000, protocol = "tcp" }
       ]
       environment = [
-        { name = "PORT",              value = "3000" },
-        { name = "NODE_ENV",          value = "production" },
-        { name = "POSTGRES_HOST",     value = aws_db_instance.postgres.address },
-        { name = "POSTGRES_PORT",     value = "5432" },
-        { name = "POSTGRES_DB",       value = var.db_name },
-        { name = "POSTGRES_USER",     value = var.db_username },
+        { name = "PORT", value = "3000" },
+        { name = "NODE_ENV", value = "production" },
+        { name = "POSTGRES_HOST", value = aws_db_instance.postgres.address },
+        { name = "POSTGRES_PORT", value = "5432" },
+        { name = "POSTGRES_DB", value = var.db_name },
+        { name = "POSTGRES_USER", value = var.db_username },
         { name = "POSTGRES_PASSWORD", value = var.db_password },
-        { name = "JWT_SECRET",        value = var.jwt_secret },
-        { name = "JWT_EXPIRES_IN",    value = "1h" },
-        { name = "OKTA_ISSUER",       value = var.okta_issuer },
-        { name = "OKTA_CLIENT_ID",    value = var.okta_client_id },
-        { name = "FRONTEND_URL",      value = "http://${aws_eip.ecs.public_ip}" }
+        { name = "JWT_SECRET", value = var.jwt_secret },
+        { name = "JWT_EXPIRES_IN", value = "1h" },
+        { name = "OKTA_ISSUER", value = var.okta_issuer },
+        { name = "OKTA_CLIENT_ID", value = var.okta_client_id },
+        { name = "FRONTEND_URL", value = "http://${aws_eip.ecs.public_ip}" }
       ]
       logConfiguration = {
         logDriver = "awslogs"

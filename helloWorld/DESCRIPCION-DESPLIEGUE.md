@@ -23,7 +23,7 @@ Internet
     │ :80
     ▼
 ┌──────────────────────────────────────────────┐
-│  EC2 t3.medium  —  ECS Container Instance    │
+│  EC2 t2.micro  —  ECS Container Instance      │
 │  ┌──────────────────────────────────────┐    │
 │  │         ECS Task  (host network)     │    │
 │  │  ┌───────────┐     ┌─────────────┐  │    │
@@ -70,20 +70,21 @@ El detalle ejecutable (comandos exactos, variables y troubleshooting) está en [
 
 ---
 
-## 4. Costo estimado (us-east-1, ambiente productivo)
+## 4. Costo estimado (us-east-1) — optimizado a Free Tier (~$0)
 
-| Recurso | Especificación | Precio referencial |
-|---|---|---|
-| EC2 t3.medium | 2 vCPU · 4 GB RAM | ~$30 / mes |
-| EBS gp3 30 GB (encriptado) | Disco del host ECS | ~$2.40 / mes |
-| RDS PostgreSQL db.t3.small | 2 vCPU · 2 GB · 50 GB gp3 | ~$30 / mes |
-| ECR (2 repos) | ~200 MB por imagen | ~$0.50 / mes |
-| CloudWatch Logs (30 días) | ~2 GB / mes | ~$1.00 / mes |
-| Data transfer salida | ~10 GB / mes | ~$0.90 / mes |
-| Okta | Plan developer / CIAM | Según contrato (developer sin costo) |
-| **Total estimado** | | **~$65 / mes** |
+Este proyecto está dimensionado **por defecto** para la capa gratuita de AWS. En una cuenta nueva (< 12 meses), el costo objetivo es **~$0**.
 
-> Para alta disponibilidad real, el siguiente paso sería un Auto Scaling Group (≥2 instancias en AZs distintas) + Application Load Balancer (~$16/mes adicionales), que además habilita despliegues sin downtime.
+| Recurso | Especificación | Free Tier | Fuera de Free Tier |
+|---|---|---|---|
+| EC2 t2.micro | 1 vCPU · 1 GB RAM | ✅ 750 h/mes | ~$8.50 / mes |
+| EBS gp2 30 GB (encriptado) | Disco del host ECS | ✅ 30 GB incluidos | ~$3 / mes |
+| RDS PostgreSQL db.t3.micro | 20 GB gp2 | ✅ 750 h/mes + 20 GB | ~$15 / mes |
+| ECR (2 repos) | ~200 MB por imagen | ✅ 500 MB incluidos | ~$0.50 / mes |
+| CloudWatch Logs (7 días) | < 1 GB / mes | ✅ 5 GB ingest | ~$0.50 / mes |
+| Okta | Plan developer | ✅ sin costo (developer) | Según contrato |
+| **Total** | | **~$0** | **~$28 / mes** |
+
+> Performance Insights y Container Insights están desactivados por defecto para mantener el costo en $0. Cuando termines de probar, ejecuta `terraform destroy`. Para un entorno productivo con alta disponibilidad, se sobreescriben las variables de tamaño y se añade Auto Scaling Group + ALB.
 
 ---
 
@@ -91,3 +92,4 @@ El detalle ejecutable (comandos exactos, variables y troubleshooting) está en [
 
 - ✅ **Modificaciones de aplicación** (PostgreSQL + Okta) — ya aplicadas en `backend/` y `frontend/`.
 - ✅ **Infraestructura como código** (ECS + RDS + ECR + IAM) — escrita en `infra/`, lista para `terraform apply`.
+- ⏸️ **Despliegue real en AWS** — **pendiente / no ejecutado** por decisión actual.

@@ -1,0 +1,16 @@
+# Copia este archivo a terraform.tfvars y rellena los valores.
+# El dimensionamiento ya está en Free Tier (~$0) por defecto — NO necesitas
+# tocar tamaños de instancia ni de RDS.
+
+# --- Obligatorios ---
+key_name    = "helloworld-key"                  # Nombre del EC2 Key Pair creado en AWS
+db_password = "CambiaEstaClave123!"             # Contraseña maestra de PostgreSQL (>= 8 chars)
+jwt_secret  = "pon_aqui_una_cadena_aleatoria_de_minimo_32_caracteres"
+
+# --- Okta (déjalos vacíos si por ahora solo usarás login local) ---
+okta_issuer    = ""   # ej: https://dev-XXXXXXXX.okta.com/oauth2/default
+okta_client_id = ""
+
+# --- Opcionales (ya tienen defaults de Free Tier) ---
+# aws_region        = "us-east-1"
+# allowed_ssh_cidr  = "TU_IP_PUBLICA/32"   # recomendado: restringe SSH a tu IP

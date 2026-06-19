@@ -7,7 +7,7 @@ Internet
     │ :80
     ▼
 ┌──────────────────────────────────────────────┐
-│  EC2 t3.medium  —  ECS Container Instance    │
+│  EC2 t2.micro  —  ECS Container Instance      │
 │  ┌──────────────────────────────────────┐    │
 │  │         ECS Task  (host network)     │    │
 │  │  ┌───────────┐     ┌─────────────┐  │    │
@@ -21,32 +21,34 @@ Internet
                                 ▼
                     ┌────────────────────┐
                     │  RDS PostgreSQL 16 │
-                    │  db.t3.small       │
+                    │  db.t3.micro       │
                     │  (subnet privada)  │
                     └────────────────────┘
 
 ECR ──────── repositorios de imágenes Docker
-CloudWatch ─ logs de contenedores (30 días)
+CloudWatch ─ logs de contenedores (7 días)
 ```
 
 **Decisión de diseño — `host` network mode:**
 En ECS on EC2 con modo `host`, todos los contenedores del task comparten el namespace de red del EC2. Esto permite que el nginx del frontend haga proxy directo a `http://localhost:3000` (backend) sin necesidad de un mecanismo adicional de service discovery. Para un workload de instancia única como este, este modelo simplifica la topología de red y evita una capa de infraestructura que añade complejidad operativa sin aportar redundancia real hasta que se escale horizontalmente.
 
-## Costo estimado (us-east-1, ambiente productivo)
+## Costo estimado (us-east-1) — optimizado a Free Tier (~$0)
 
-| Recurso | Especificación | Precio referencial |
-|---|---|---|
-| EC2 t3.medium | 2 vCPU · 4 GB RAM | ~$30 / mes |
-| EBS gp3 30 GB (encriptado) | Disco del host ECS | ~$2.40 / mes |
-| RDS PostgreSQL db.t3.small | 2 vCPU · 2 GB RAM · 50 GB gp3 | ~$30 / mes |
-| RDS Performance Insights (7 días) | Incluido | $0 |
-| ECR 2 repos | ~200 MB por imagen | ~$0.50 / mes |
-| CloudWatch Logs (30 días) | Estimado ~2 GB / mes | ~$1.00 / mes |
-| Elastic IP | Asociado a instancia activa | $0 |
-| Data transfer (estimado) | ~10 GB salida / mes | ~$0.90 / mes |
-| **Total estimado** | | **~$65 / mes** |
+Esta infraestructura está dimensionada **por defecto** para la capa gratuita de AWS. En una cuenta nueva (< 12 meses) el costo objetivo es **~$0**.
 
-> Para mayor disponibilidad en producción se recomienda evolucionar hacia: Auto Scaling Group (mínimo 2 instancias en AZs distintas) + Application Load Balancer (~$16/mes adicionales), lo que también habilita rolling deployments sin downtime.
+| Recurso | Especificación | Free Tier (cuenta < 12 meses) | Fuera de Free Tier |
+|---|---|---|---|
+| EC2 t2.micro | 1 vCPU · 1 GB RAM | ✅ 750 h/mes | ~$8.50 / mes |
+| EBS gp2 30 GB (encriptado) | Disco del host ECS | ✅ 30 GB incluidos | ~$3 / mes |
+| RDS PostgreSQL db.t3.micro | 20 GB gp2 | ✅ 750 h/mes + 20 GB | ~$15 / mes |
+| ECR 2 repos | ~200 MB por imagen | ✅ 500 MB incluidos | ~$0.50 / mes |
+| CloudWatch Logs (7 días) | ~ <1 GB / mes | ✅ 5 GB ingest incluidos | ~$0.50 / mes |
+| Elastic IP | Asociado a instancia activa | ✅ gratis si la instancia corre | — |
+| **Total** | | **~$0** | **~$28 / mes** |
+
+> **Importante**: el Free Tier de EC2/RDS dura 12 meses desde la creación de la cuenta. Cuando termines de probar, ejecuta `terraform destroy` para no acumular cargos. Performance Insights y Container Insights están **desactivados por defecto** justamente para mantener el costo en $0.
+>
+> Si en el futuro quisieras un dimensionamiento productivo (mayor disponibilidad), basta con sobreescribir variables en `terraform.tfvars` (`instance_type`, `db_instance_class`, etc.) y añadir un Auto Scaling Group + ALB.
 
 ## Pre-requisitos
 
@@ -58,12 +60,13 @@ En ECS on EC2 con modo `host`, todos los contenedores del task comparten el name
 ## Despliegue paso a paso
 
 ### 1 — Crear `infra/terraform.tfvars`
+Copia `terraform.tfvars.example` a `terraform.tfvars` y rellena los secretos. **No necesitas tocar tamaños** — los defaults ya son Free Tier.
 ```hcl
 key_name       = "helloworld-key"
 db_password    = "MiClaveSegura123!"
 jwt_secret     = "una_clave_aleatoria_de_al_menos_32_caracteres"
-okta_issuer    = "https://dev-XXXXXXXX.okta.com/oauth2/default"
-okta_client_id = "tu_client_id_de_okta"
+okta_issuer    = "https://dev-XXXXXXXX.okta.com/oauth2/default"  # vacío si solo usarás login local
+okta_client_id = "tu_client_id_de_okta"                          # vacío si solo usarás login local
 ```
 
 ### 2 — Actualizar environment de producción del frontend
@@ -129,11 +132,11 @@ En Okta Console → Applications → HelloWorld:
 aws ecs update-service --cluster helloworld-cluster --service helloworld-service --force-new-deployment --region us-east-1
 ```
 
-## Destruir infraestructura
+## Destruir infraestructura (IMPORTANTE para no acumular cargos)
 
 ```bash
 terraform destroy
-# ⚠️  RDS tiene deletion_protection = true — desactivar primero:
-# terraform apply -var='...' # actualizar deletion_protection a false
-# terraform destroy
+# Confirmar con: yes
 ```
+
+> Con los defaults Free Tier, `deletion_protection = false` y `skip_final_snapshot = true`, por lo que el `destroy` funciona limpio sin pasos extra. Hazlo siempre que termines de probar.
