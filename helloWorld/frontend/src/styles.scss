@@ -1,0 +1,18 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #f8fafc;
+}
+
+/* Material overrides */
+.mat-mdc-raised-button.mat-primary {
+  --mdc-protected-button-container-color: #6366f1;
+}

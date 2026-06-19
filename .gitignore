@@ -1,0 +1,23 @@
+# Terraform
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/terraform.tfvars
+**/.terraform.lock.hcl
+
+# Python
+**/__pycache__/
+*.pyc
+
+# Node
+**/node_modules/
+**/dist/
+
+# Entorno / credenciales (se versiona solo .env.example)
+**/.env
+*.pem
+.aws/
+
+# OS / editor
+.DS_Store
+Thumbs.db
