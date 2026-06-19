@@ -91,4 +91,3 @@ El detalle ejecutable (comandos exactos, variables y troubleshooting) está en [
 
 - ✅ **Modificaciones de aplicación** (PostgreSQL + Okta) — ya aplicadas en `backend/` y `frontend/`.
 - ✅ **Infraestructura como código** (ECS + RDS + ECR + IAM) — escrita en `infra/`, lista para `terraform apply`.
-- ⏸️ **Despliegue real en AWS** — **pendiente / no ejecutado** por decisión actual.
